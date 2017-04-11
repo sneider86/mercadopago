@@ -1,32 +1,23 @@
 <?php
-require_once '../Httpfull/bootstrap.php';
-require_once '../lib/mercadopago.php';
-public class MercadoPagoClass(){
-	private $public_key;
-	private $access_token;
-
+require_once "mercadopago.php";
+class MercadoPagoClass{
 	private $client_id;
 	private $client_secret;
 	private $titulo;
 	private $cantidad;
 	private $moneda;
 	private $precio;
+	private $credentials;
+	private $categoria;
 
-	private $url;
-	private $url_base;
-
-	function MercadoPagoClass($public_key,$access_token){
-		$this->url_base='https://api.mercadolibre.com/';
-		$this->public_key=$public_key;
-		$this->access_token=$access_token;
-	}
-	function MercadoPagoClass(){
-		$this->url_base='https://api.mercadolibre.com/';
-		$this->public_key='TEST-3b27375a-4a67-475f-8aba-a4b073447d80';
-		$this->access_token='TEST-3121391224066490-041110-32520c86eaabce6c88e7998bbda9d195__LB_LC__-251651651';
-
+	function MercadoPagoClass($sandbox=false){
+		$this->credentials = parse_ini_file(dirname(__FILE__)."/credentials.ini");
 		$this->moneda='COP';
-
+		$this->credentials = parse_ini_file(dirname(__FILE__)."/credentials.ini");
+		$this->client_id=$this->credentials["CLIENT_ID"];
+		$this->client_secret=$this->credentials["CLIENT_SECRET"];
+		$this->categoria='Evento';
+		$this->cantidad=0;
 	}
 	public function getClientID(){
 		return $this->client_id;
@@ -63,12 +54,37 @@ public class MercadoPagoClass(){
 			throw new Exception('El precio debe ser numerico.');
 		}
 	}
-	public function getUrl(){
-		return $this->url;
+
+	public function generarBotonPago(){
+		$preference_data = array(
+		    "items" => array(
+		        array(
+		            "title" => $this->titulo,
+		            "currency_id" => $this->moneda,
+		            "category_id" => $this->categoria,
+		            "quantity" => $this->cantidad,
+		            "unit_price" => $this->precio
+		        )
+		    ),
+		    "back_urls" => array(
+				"success" => "https://www.success.com",
+				"failure" => "http://www.failure.com",
+				"pending" => "http://www.pending.com"
+			),
+		);
+		$mp = new MP($this->client_id, $this->client_secret);
+		$preference = $mp->create_preference($preference_data);
+		if($sandbox){
+			$html='<a href="'.$preference["response"]["init_point"].'" name="MP-Checkout" class="orange-ar-m-sq-arall">Pagar</a>
+        <script type="text/javascript" src="//resources.mlstatic.com/mptools/render.js"></script>';
+		}else{
+			$html='<a href="'.$preference["response"]["sandbox_init_point"].'" name="MP-Checkout" class="orange-ar-m-sq-arall">Pagar</a>
+        <script type="text/javascript" src="//resources.mlstatic.com/mptools/render.js"></script>';
+		}
+		return $html;
+		
 	}
-	public function setUrl($url){
-		$this->url=$url;
-	}
+
 	public function pagar(){
 
 		$mp = new MP('3121391224066490', 'W0LtO8zTvGx5g4pMClbNR0eurpqLoUSS');
